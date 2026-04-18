@@ -1,0 +1,11 @@
+kenlm/
+.vscode/
+language_model/
+saved_models/
+static/uploads
+venv/
+gpu.py
+README_KENLM.md 
+data/
+logs/
+src/__pycache__

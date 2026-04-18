@@ -1,0 +1,6 @@
+opencv-python
+tensorflow
+flask
+werkzeug
+pyctcdecode
+numpy

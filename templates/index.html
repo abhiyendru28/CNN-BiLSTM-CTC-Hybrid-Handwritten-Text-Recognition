@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Handwritten Text Recognition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="blob blob-a"></div>
+  <div class="blob blob-b"></div>
+
+  <main class="shell">
+    <section class="panel panel-left">
+      <header class="hero">
+        <!-- <p class="eyebrow">HANDWRITING AI</p> -->
+        <h1>Offline Handwritten Recognition</h1>
+        <p class="sub">Upload a handwritten image and get instant transcription.</p>
+      </header>
+
+      <div class="chips">
+        <span class="chip">Drag and Drop</span>
+        <span class="chip">Upload</span>
+      </div>
+
+      <form id="htrForm" class="dropzone" novalidate>
+        <input id="fileInput" name="file" type="file" accept="image/*" hidden required />
+        <button type="button" id="pickBtn" class="btn">Choose Image</button>
+        <p class="hint">or drop image here</p>
+        <p id="fileMeta" class="file-meta">No image selected</p>
+      </form>
+
+      <div class="actions">
+        <button id="predictBtn" class="btn accent" disabled>Transcribe</button>
+        <button id="clearBtn" class="btn ghost" type="button">Clear</button>
+      </div>
+
+      <div class="progress-wrap" aria-hidden="true">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+
+      <div id="status" class="status idle">Waiting for input...</div>
+    </section>
+
+    <section class="panel panel-right">
+      <div class="preview-wrap">
+        <img id="previewImage" alt="Preview" />
+        <div id="previewPlaceholder" class="preview-placeholder">Image preview appears here</div>
+      </div>
+
+      <article id="resultCard" class="result-card hidden">
+        <div class="result-head">
+          <h2>Predicted Text</h2>
+          <button id="copyBtn" class="btn tiny" type="button">Copy</button>
+        </div>
+        <p id="predictionText">-</p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("htrForm");
+    const fileInput = document.getElementById("fileInput");
+    const pickBtn = document.getElementById("pickBtn");
+    const predictBtn = document.getElementById("predictBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const statusEl = document.getElementById("status");
+    const previewImage = document.getElementById("previewImage");
+    const previewPlaceholder = document.getElementById("previewPlaceholder");
+    const resultCard = document.getElementById("resultCard");
+    const predictionText = document.getElementById("predictionText");
+    const fileMeta = document.getElementById("fileMeta");
+    const progressBar = document.getElementById("progressBar");
+
+    let selectedFile = null;
+    let progressTimer = null;
+
+    function setStatus(text, mode) {
+      statusEl.textContent = text;
+      statusEl.className = "status " + mode;
+    }
+
+    function setProgress(percent) {
+      progressBar.style.width = percent + "%";
+    }
+
+    function animateProgress() {
+      let p = 5;
+      setProgress(p);
+      clearInterval(progressTimer);
+      progressTimer = setInterval(() => {
+        if (p < 88) {
+          p += Math.random() * 8;
+          setProgress(Math.min(88, p));
+        }
+      }, 180);
+    }
+
+    function stopProgress(success) {
+      clearInterval(progressTimer);
+      setProgress(success ? 100 : 0);
+      if (success) {
+        setTimeout(() => setProgress(0), 700);
+      }
+    }
+
+    function resetUI() {
+      selectedFile = null;
+      fileInput.value = "";
+      predictBtn.disabled = true;
+      previewImage.removeAttribute("src");
+      previewImage.classList.remove("show");
+      previewPlaceholder.classList.remove("hidden");
+      resultCard.classList.add("hidden");
+      predictionText.textContent = "-";
+      fileMeta.textContent = "No image selected";
+      setStatus("Waiting for input...", "idle");
+      stopProgress(false);
+    }
+
+    function typeOut(text) {
+      predictionText.textContent = "";
+      let i = 0;
+      const timer = setInterval(() => {
+        predictionText.textContent += text.charAt(i);
+        i += 1;
+        if (i >= text.length) clearInterval(timer);
+      }, 20);
+    }
+
+    function handleFile(file) {
+      if (!file || !file.type.startsWith("image/")) {
+        setStatus("Please select a valid image file.", "error");
+        return;
+      }
+
+      selectedFile = file;
+      predictBtn.disabled = false;
+      previewImage.src = URL.createObjectURL(file);
+      previewImage.classList.add("show");
+      previewPlaceholder.classList.add("hidden");
+      resultCard.classList.add("hidden");
+      fileMeta.textContent = file.name + " (" + Math.round(file.size / 1024) + " KB)";
+      setStatus("Image ready. Press Transcribe or Ctrl+Enter.", "ready");
+    }
+
+    pickBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+    clearBtn.addEventListener("click", resetUI);
+
+    form.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      form.classList.add("drag");
+    });
+
+    form.addEventListener("dragleave", () => form.classList.remove("drag"));
+
+    form.addEventListener("drop", (e) => {
+      e.preventDefault();
+      form.classList.remove("drag");
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.key === "Enter" && !predictBtn.disabled) {
+        predictBtn.click();
+      }
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const txt = predictionText.textContent.trim();
+      if (!txt || txt === "-") return;
+      try {
+        await navigator.clipboard.writeText(txt);
+        setStatus("Prediction copied to clipboard.", "success");
+      } catch {
+        setStatus("Clipboard copy failed.", "error");
+      }
+    });
+
+    predictBtn.addEventListener("click", async () => {
+      if (!selectedFile) {
+        setStatus("Choose an image first.", "error");
+        return;
+      }
+
+      setStatus("Running inference...", "loading");
+      predictBtn.disabled = true;
+      animateProgress();
+
+      const fd = new FormData();
+      fd.append("file", selectedFile);
+
+      try {
+        const res = await fetch("/predict", { method: "POST", body: fd });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Prediction failed.");
+        }
+
+        if (data.image_url) {
+          previewImage.src = data.image_url + "?t=" + Date.now();
+        }
+
+        typeOut(data.prediction || "");
+        resultCard.classList.remove("hidden");
+        setStatus("Done. Prediction generated.", "success");
+        stopProgress(true);
+      } catch (err) {
+        setStatus(err.message || "Prediction failed.", "error");
+        stopProgress(false);
+      } finally {
+        predictBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
