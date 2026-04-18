@@ -39,6 +39,15 @@
         <button id="clearBtn" class="btn ghost" type="button">Clear</button>
       </div>
 
+      <div class="actions">
+        <label for="outputLevel">Type</label>
+        <select id="outputLevel" class="output-select">
+          <option value="paragraph" selected>Paragraph</option>
+          <option value="line">Line</option>
+          <option value="word">Word</option>
+        </select>
+      </div>
+
       <div class="progress-wrap" aria-hidden="true">
         <div id="progressBar" class="progress-bar"></div>
       </div>
@@ -57,6 +66,7 @@
           <h2>Predicted Text</h2>
           <button id="copyBtn" class="btn tiny" type="button">Copy</button>
         </div>
+        <div id="wordCountText" class="word-count">Words: -</div>
         <p id="predictionText">-</p>
       </article>
     </section>
@@ -76,6 +86,8 @@
     const predictionText = document.getElementById("predictionText");
     const fileMeta = document.getElementById("fileMeta");
     const progressBar = document.getElementById("progressBar");
+    const wordCountText = document.getElementById("wordCountText");
+    const outputLevel = document.getElementById("outputLevel");
 
     let selectedFile = null;
     let progressTimer = null;
@@ -119,8 +131,11 @@
       resultCard.classList.add("hidden");
       predictionText.textContent = "-";
       fileMeta.textContent = "No image selected";
+      wordCountText.textContent = "Words: -";
+      outputLevel.value = "paragraph";
       setStatus("Waiting for input...", "idle");
       stopProgress(false);
+
     }
 
     function typeOut(text) {
@@ -195,6 +210,7 @@
 
       const fd = new FormData();
       fd.append("file", selectedFile);
+      fd.append("output_level", outputLevel.value);
 
       try {
         const res = await fetch("/predict", { method: "POST", body: fd });
@@ -208,6 +224,10 @@
           previewImage.src = data.image_url + "?t=" + Date.now();
         }
 
+        const words = Number.isFinite(Number(data.word_count)) ? Number(data.word_count) : 0;
+        const lines = Number.isFinite(Number(data.line_count)) ? Number(data.line_count) : 0;
+        const paragraphs = Number.isFinite(Number(data.paragraph_count)) ? Number(data.paragraph_count) : 0;
+        wordCountText.textContent = "Words: " + words + " | Lines: " + lines + " | Paragraphs: " + paragraphs;
         typeOut(data.prediction || "");
         resultCard.classList.remove("hidden");
         setStatus("Done. Prediction generated.", "success");
