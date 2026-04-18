@@ -4,3 +4,4 @@ flask
 werkzeug
 pyctcdecode
 numpy
+kenlm
