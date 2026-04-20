@@ -2,13 +2,14 @@
   --bg: #f7f3ea;
   --ink: #17202a;
   --muted: #5f6b78;
-  --card: rgba(255, 255, 255, 0.78);
+  --card: rgba(255, 255, 255, 0.85);
   --line: #d8c9b4;
   --accent: #dd6b20;
   --accent-2: #0c7b93;
   --ok: #136f3b;
   --err: #a4161a;
   --glow: rgba(221, 107, 32, 0.25);
+  --handwriting-font: "Dancing Script", cursive;
 }
 
 * { box-sizing: border-box; }
@@ -18,6 +19,7 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
+    url('../images/bg.jpg') center/cover no-repeat,
     radial-gradient(1200px 600px at 8% -10%, #fff7e8 0%, transparent 60%),
     radial-gradient(900px 500px at 90% 0%, #e6f7ff 0%, transparent 60%),
     var(--bg);
@@ -50,6 +52,7 @@ body {
   background: #ffcc99;
   top: 8%;
   left: -50px;
+  border: 2px solid 
 }
 
 .blob-b {
@@ -74,11 +77,22 @@ body {
 .panel {
   backdrop-filter: blur(12px);
   background: var(--card);
-  border: 1px solid rgba(255,255,255,0.65);
+  border: 5px solid rgba(255, 89, 0, 0.693);
   border-radius: 18px;
   padding: 1.1rem;
-  box-shadow: 0 16px 28px rgba(18, 28, 45, 0.12);
-  animation: rise .45s ease both;
+  box-shadow:
+    0 12px 28px rgba(18,28,45,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  transition:
+    transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.panel:hover {
+  transform: translateY(-6px);
+  border-color: rgba(12,123,147,0.18);
+  box-shadow:
+    0 20px 36px rgba(18,28,45,0.14),
+    inset 0 1px 0 rgba(255,255,255,0.65);
 }
 
 .eyebrow {
@@ -93,6 +107,13 @@ body {
   margin: .3rem 0 .5rem;
   line-height: 1.08;
   font-size: clamp(1.5rem, 3.2vw, 2.35rem);
+  font-family: var(--handwriting-font);
+  color: var(--accent);
+}
+
+.hero-icon {
+  width: 80px;
+  margin-top: 1rem;
 }
 
 .sub {
@@ -257,8 +278,9 @@ body {
 }
 
 .result-card {
-  border: 1px solid #b8e1cb;
-  background: linear-gradient(180deg, #f4fff8, #effdf4);
+  border: 2px solid var(--accent);
+  background: linear-gradient(180deg, #fffaf0, #fef6e7);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   padding: .9rem;
 }
