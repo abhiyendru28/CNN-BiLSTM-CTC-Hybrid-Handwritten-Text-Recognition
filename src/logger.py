@@ -13,7 +13,6 @@ def initialize_logger(module_name: str) -> logging.Logger:
     logger = logging.getLogger(module_name)
     logger.setLevel(logging.DEBUG)
     
-    # Prevent hierarchical duplicate logging
     if not logger.handlers:
         file_trace = logging.FileHandler(os.path.join(LOG_DIRECTORY, 'htr_execution.log'))
         file_trace.setLevel(logging.DEBUG)

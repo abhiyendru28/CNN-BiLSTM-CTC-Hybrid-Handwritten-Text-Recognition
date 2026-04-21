@@ -46,7 +46,6 @@ def execute_morphological_preprocessing_from_array(
     try:
         if raw_img is None or raw_img.size == 0:
             return None
-
         if len(raw_img.shape) == 3:
             raw_gray = cv2.cvtColor(raw_img, cv2.COLOR_BGR2GRAY)
         else:
@@ -84,6 +83,7 @@ def execute_morphological_preprocessing(
     Backward-compatible file-path wrapper used by training/inference code.
     """
     try:
+        # Image greyscale
         raw_img = cv2.imread(image_filepath, cv2.IMREAD_GRAYSCALE)
         if raw_img is None:
             raise FileNotFoundError(f"Source image missing or corrupted: {image_filepath}")
@@ -297,7 +297,6 @@ def segment_words_scale_space(
 
     line_h, line_w = line_ink.shape
 
-    # Keep width >> height to merge characters into words
     kw = max(base_kernel[0], int(line_w * 0.06))
     kh = max(base_kernel[1], int(line_h * 0.35))
     if kw % 2 == 0:

@@ -59,7 +59,6 @@ def load_or_create_split_indices(
                 f"(missing train_idx/val_idx/test_idx)."
             )
 
-    # Create deterministic split and freeze it on disk.
     rng = np.random.default_rng(seed)
     all_idx = np.arange(total_size, dtype=np.int64)
     rng.shuffle(all_idx)

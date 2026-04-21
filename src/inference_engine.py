@@ -92,7 +92,7 @@ def execute_ctc_decoding(
     time_steps = softmax_probability_matrix.shape[1]
     input_lengths = np.full((batch_size,), time_steps, dtype=np.int32)
 
-    # Use config-driven CTC decode parameters so beam/greedy can be tuned.
+    # ctc-decoding.
     decoded_sequences, _ = tf.keras.backend.ctc_decode(
         softmax_probability_matrix,
         input_length=input_lengths,

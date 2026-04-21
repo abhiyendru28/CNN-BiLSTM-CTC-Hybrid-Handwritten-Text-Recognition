@@ -15,7 +15,7 @@ class CTCLossLayer(tf.keras.layers.Layer):
         super().__init__(name=name, **kwargs)
 
     def call(self, inputs, training=None, mask=None):
-        # inputs is a tuple/list passed from the model graph
+
         y_true, y_pred, input_length, label_length = inputs
         y_true = tf.cast(y_true, tf.int32)
         input_length = tf.cast(input_length, tf.int32)
@@ -33,67 +33,59 @@ def compile_hybrid_network():
     Executes specific dimensional reductions to achieve exactly 32 time-steps.
     """
     try:
-        # Input Tensor: (128 width, 32 height, 1 channel)
-        tensor_input = Input(shape=(IMAGE_WIDTH, IMAGE_HEIGHT, COLOR_CHANNELS), name="image_input")
         
-        # Auxiliary inputs strictly for CTC alignment computation
+        tensor_input = Input(shape=(IMAGE_WIDTH, IMAGE_HEIGHT, COLOR_CHANNELS), name="image_input") #128,32,1
+        
         tensor_labels = Input(shape=(SEQUENCE_TIME_STEPS,), name="labels", dtype="int32")
         tensor_input_len = Input(shape=(1,), name="input_length", dtype="int32")
         tensor_label_len = Input(shape=(1,), name="label_length", dtype="int32")
-        # --- Sub-Network 1: Spatial Convolutional Feature Extractor  ---
-        
-        # Block Alpha
+
+        # CNN Layer
+        # Layer 1
         conv_1 = Conv2D(32, (3, 3), padding="same", kernel_initializer="he_normal")(tensor_input)
         conv_1 = BatchNormalization()(conv_1)
         conv_1 = Activation("relu")(conv_1)
         pool_1 = MaxPooling2D(pool_size=(2, 2))(conv_1) # Output dimensions: (64, 16, 32)
 
-        # Block Beta
+        # Layer 2
         conv_2 = Conv2D(64, (3, 3), padding="same", kernel_initializer="he_normal")(pool_1)
         conv_2 = BatchNormalization()(conv_2)
         conv_2 = Activation("relu")(conv_2)
         pool_2 = MaxPooling2D(pool_size=(2, 2))(conv_2) # Output dimensions: (32, 8, 64)
 
-        # Block Gamma
+        # Layer 3
         conv_3 = Conv2D(128, (3, 3), padding="same", kernel_initializer="he_normal")(pool_2)
         conv_3 = BatchNormalization()(conv_3)
         conv_3 = Activation("relu")(conv_3)
-        # CRITICAL RECTIFICATION: Max pooling is restricted to the Y-axis (height).
-        # This prevents the X-axis (width/time) from compressing below the targeted 32 steps.
         pool_3 = MaxPooling2D(pool_size=(1, 2))(conv_3) # Output dimensions: (32, 4, 128)
 
-        # Dimensional Restructuring
-        # Collapse the height (4) and the filter depth (128) into a flat 512 vector per time step
+        # Flatenning
         reshape_tensor = Reshape(target_shape=(SEQUENCE_TIME_STEPS, 512))(pool_3)
         
-        # Dense mathematical projection to restrict features to exactly 256 per time-step 
         dense_projection = Dense(256, activation="relu", name="cnn_dense_projection")(reshape_tensor)
         dropout_layer = Dropout(0.3)(dense_projection)
 
-        # --- Sub-Network 2: Bidirectional Sequence Modeling (BiLSTM)  ---
-        
-        # Twin stacked BiLSTM layout evaluates both historical and future contextual dependencies
+        # BiLSTM Layer
+        # Layer 1
         bilstm_1 = Bidirectional(LSTM(256, return_sequences=True, dropout=0.25))(dropout_layer)
+
+        # Layer 2
         bilstm_2 = Bidirectional(LSTM(256, return_sequences=True, dropout=0.25))(bilstm_1)
 
-        # --- Sub-Network 3: Probability Distribution and CTC Classification  ---
-        
-        # Softmax outputs a probability spectrum for every character at every sequence step
+        # CTC 
+        # Prediction Layer
         softmax_predictions = Dense(TOTAL_CLASSES, activation="softmax", name="softmax_classifier")(bilstm_2)
 
-        # CTC topological layer integrates the alignment loss into the network graph
         ctc_output = CTCLossLayer(name="ctc_nll_loss")(
             [tensor_labels, softmax_predictions, tensor_input_len, tensor_label_len]
         )
 
-        # The Training Model encapsulates the CTC calculations
         training_architecture = Model(
             inputs=[tensor_input, tensor_labels, tensor_input_len, tensor_label_len], 
             outputs=ctc_output, 
             name="End_to_End_HTR_Trainer"
         )
         
-        # The Inference Model truncates the graph at the Softmax output, ignoring the CTC Loss logic
         inference_architecture = Model(
             inputs=tensor_input, 
             outputs=softmax_predictions, 
@@ -104,5 +96,5 @@ def compile_hybrid_network():
         return training_architecture, inference_architecture
 
     except Exception as exception_trace:
-        log.critical(f"Graph compilation catastrophic failure: {str(exception_trace)}")
+        log.critical(f"Graph compilation failure: {str(exception_trace)}")
         raise

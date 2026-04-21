@@ -64,14 +64,14 @@ def predict() -> ResponseReturnValue:
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
 
-    # Word-level mode: direct decode, no segmentation
+    # Word-level: direct decode, no segmentation
     if output_level == "word":
-        processed_tensor = execute_morphological_preprocessing(filepath)  # adaptive path
+        processed_tensor = execute_morphological_preprocessing(filepath)
         if processed_tensor is None:
             return jsonify({"ok": False, "error": "Preprocessing failed"}), 500
 
         try:
-            vis_matrix = np.transpose(processed_tensor[..., 0])  # (H, W)
+            vis_matrix = np.transpose(processed_tensor[..., 0]) 
             vis_img = (vis_matrix * 255.0).clip(0, 255).astype(np.uint8)
             processed_filename = f"processed_{filename}"
             processed_path = os.path.join(app.config["UPLOAD_FOLDER"], processed_filename)
@@ -119,7 +119,7 @@ def predict() -> ResponseReturnValue:
             }
         ), 200
 
-    # Line-level mode: segmentation path (Otsu)
+    # Line-level: segmentation path (Otsu)
     if output_level == "line":
         line_gray = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
         if line_gray is None:
@@ -259,7 +259,6 @@ def _group_lines_into_paragraphs(
     if len(lines) == 1:
         return [lines[0]]
 
-    # Fallback when geometry is missing/misaligned.
     if len(line_boxes) != len(lines):
         merged = " ".join([line for line in lines if line]).strip()
         return [merged] if merged else []
