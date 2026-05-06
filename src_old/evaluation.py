@@ -127,7 +127,7 @@ def evaluate_words_test_dataset(weights_path: str, require_lm: bool) -> Dict[str
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Evaluate src_words model on the pre-split IAM words test dataset."
+        description="Evaluate src model on the pre-split IAM words test dataset."
     )
     parser.add_argument(
         "--weights",

@@ -9,3 +9,4 @@ data/
 logs/
 src/__pycache__
 word/
+static/uploads_old

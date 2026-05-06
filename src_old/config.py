@@ -1,14 +1,15 @@
 import os
 
-# Absolute Pathing
+# Absolute Path
 BASE_DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIRECTORY = os.path.join(BASE_DIRECTORY, "data")
 FORMS_METADATA = os.path.join(DATA_DIRECTORY, "words.txt")
+LINES_METADATA = os.path.join(DATA_DIRECTORY, "lines.txt")
 IMAGE_DIRECTORY = os.path.join(DATA_DIRECTORY, "words")
 LOG_DIRECTORY = os.path.join(BASE_DIRECTORY, "logs")
 MODEL_DIRECTORY = os.path.join(BASE_DIRECTORY, "saved_models")
 
-# Input geometry
+# Input image geometry
 IMAGE_WIDTH = 128
 IMAGE_HEIGHT = 32
 COLOR_CHANNELS = 1
@@ -20,27 +21,7 @@ INITIAL_LEARNING_RATE = 3e-4
 MAX_GRAD_NORM = 5.0
 SEQUENCE_TIME_STEPS = 32
 
-# Multiprocessing controls for data loading (training + inference)
-CPU_CORE_COUNT = max(1, os.cpu_count() or 1)
-ENABLE_MULTIPROCESSING = CPU_CORE_COUNT > 1
-TRAINING_WORKERS = max(1, min(8, CPU_CORE_COUNT - 1)) if ENABLE_MULTIPROCESSING else 1
-INFERENCE_WORKERS = TRAINING_WORKERS
-MULTIPROCESSING_QUEUE_SIZE = 16
-# Process-based workers are often slower on Windows due to spawn/pickle overhead.
-# Keep workers enabled, but default to thread-based loading there.
-USE_PROCESS_BASED_WORKERS = ENABLE_MULTIPROCESSING and (os.name != "nt")
-
-# Runtime performance toggles (do not change model targets/loss behavior).
-ENABLE_MIXED_PRECISION = True
-ENABLE_XLA_JIT = False
-TRAIN_STEPS_PER_EXECUTION = 16
-
-# Decode callback cadence controls throughput of expensive val decoding.
-DECODE_EVAL_MAX_BATCHES = 200
-DECODE_EVAL_EVERY_N_EPOCHS = 2
-
-# Replication split (train/val/test).
-# 72/8/20 keeps paper-style 80/20 train-test while reserving validation.
+# Test-Val-Train Split
 SPLIT_TRAIN_RATIO = 0.72
 SPLIT_VAL_RATIO = 0.08
 SPLIT_TEST_RATIO = 0.20
@@ -58,7 +39,7 @@ TOTAL_CLASSES = len(VOCABULARY_LIST) + 1
 RANDOM_SEED = 42
 SPLIT_INDEX_FILE = os.path.join(MODEL_DIRECTORY, "replication_split_indices.npz")
 
-# Replication policy flags
+# Replication policy
 REPLICATION_MODE = True
 STRICT_SPLIT_POLICY = True
 STRICT_CHARSET_POLICY = True
@@ -72,9 +53,6 @@ LM_ALPHA = 0.6
 LM_BETA = 1.5
 
 # CTC decoding parameters (used when no external LM is available)
-# `CTC_GREEDY=True` will use a greedy decode; otherwise beam search is used.
 CTC_GREEDY = False
-# Beam width for tf.keras.backend.ctc_decode when greedy=False
 CTC_BEAM_WIDTH = 50
-# Number of top paths to return from CTC decode
 CTC_TOP_PATHS = 1

@@ -1,5 +1,4 @@
 import os
-import importlib
 import numpy as np
 import tensorflow as tf
 
@@ -23,44 +22,29 @@ from src.config import (
     CTC_GREEDY,
     CTC_BEAM_WIDTH,
     CTC_TOP_PATHS,
-    ENABLE_MULTIPROCESSING,
-    INFERENCE_WORKERS,
-    MULTIPROCESSING_QUEUE_SIZE,
 )
 from src.dataset_parser import parse_iam_metadata, OptimizedHTRGenerator
 from src.architecture import compile_hybrid_network
 from src.metrics import aggregate_corpus_metrics
 from src.split_utils import load_or_create_split_indices
 from src.logger import initialize_logger
-from typing import Any, Callable, Optional, cast
-
-CtcDecoderBuilder = Callable[..., Any]
-_build_ctcdecoder: Optional[CtcDecoderBuilder] = None
 
 try:
-    from pyctcdecode.decoder import build_ctcdecoder as _imported_build_ctcdecoder
-    _build_ctcdecoder = cast(CtcDecoderBuilder, _imported_build_ctcdecoder)
+    from pyctcdecode.decoder import build_ctcdecoder
 except Exception:
-    try:
-        legacy_module = importlib.import_module("pyctcdecode")
-        legacy_builder = getattr(legacy_module, "build_ctcdecoder", None)
-        if callable(legacy_builder):
-            _build_ctcdecoder = cast(CtcDecoderBuilder, legacy_builder)
-        else:
-            _build_ctcdecoder = None
-    except Exception:
-        _build_ctcdecoder = None
+    build_ctcdecoder = None
 
 log = initialize_logger(__name__)
 
 
 def build_replication_lm_decoder(required: bool = STRICT_LM_DECODER):
-    decoder_builder = _build_ctcdecoder
-    if decoder_builder is None:
+
+
+    if not os.path.exists(KENLM_MODEL_PATH):
         if required:
-            raise ImportError(
-                "pyctcdecode is not available for LM-based decoding. "
-                "Install: pip install pyctcdecode"
+            raise FileNotFoundError(
+                f"Missing KenLM binary at {KENLM_MODEL_PATH}. "
+                "Replication mode requires corpus-backed decoding."
             )
         return None
 
@@ -77,7 +61,7 @@ def build_replication_lm_decoder(required: bool = STRICT_LM_DECODER):
 
     labels = list(VOCABULARY_LIST) + [""]
 
-    return decoder_builder(
+    return build_ctcdecoder(
         labels=labels,
         kenlm_model_path=KENLM_MODEL_PATH,
         unigrams=unigrams,
@@ -108,7 +92,7 @@ def execute_ctc_decoding(
     time_steps = softmax_probability_matrix.shape[1]
     input_lengths = np.full((batch_size,), time_steps, dtype=np.int32)
 
-    # Use config-driven CTC decode parameters so beam/greedy can be tuned.
+    # ctc-decoding.
     decoded_sequences, _ = tf.keras.backend.ctc_decode(
         softmax_probability_matrix,
         input_length=input_lengths,
@@ -130,32 +114,6 @@ def execute_ctc_decoding(
         translated_texts.append("".join(chars))
 
     return translated_texts
-
-
-def _predict_with_optional_multiprocessing(model_inference, generator_test):
-    def _set_loader_parallelism(generator_obj, workers: int, use_multiprocessing: bool):
-        generator_obj.workers = workers
-        generator_obj.use_multiprocessing = use_multiprocessing
-        generator_obj.max_queue_size = MULTIPROCESSING_QUEUE_SIZE
-
-        if hasattr(generator_obj, "_workers"):
-            generator_obj._workers = workers
-        if hasattr(generator_obj, "_use_multiprocessing"):
-            generator_obj._use_multiprocessing = use_multiprocessing
-        if hasattr(generator_obj, "_max_queue_size"):
-            generator_obj._max_queue_size = MULTIPROCESSING_QUEUE_SIZE
-
-    if ENABLE_MULTIPROCESSING:
-        _set_loader_parallelism(generator_test, INFERENCE_WORKERS, True)
-        log.info(
-            "Inference multiprocessing enabled | workers=%d | queue=%d",
-            INFERENCE_WORKERS,
-            MULTIPROCESSING_QUEUE_SIZE,
-        )
-    else:
-        _set_loader_parallelism(generator_test, 1, False)
-
-    return model_inference.predict(x=generator_test, verbose=0)
 
 
 def validate_production_system():
@@ -197,12 +155,16 @@ def validate_production_system():
         lm_decoder = build_replication_lm_decoder(required=STRICT_LM_DECODER)
 
         list_ground_truths = [element["transcription"] for element in subset_testing]
-        softmax_outputs = _predict_with_optional_multiprocessing(model_inference, generator_test)
-        list_predictions = execute_ctc_decoding(
-            softmax_outputs,
-            lm_decoder=lm_decoder,
-            require_lm=STRICT_LM_DECODER,
-        )
+        list_predictions = []
+
+        for tensor_batch_x, _ in generator_test:
+            softmax_outputs = model_inference.predict(tensor_batch_x["image_input"], verbose=0)
+            decoded_batch_strings = execute_ctc_decoding(
+                softmax_outputs,
+                lm_decoder=lm_decoder,
+                require_lm=STRICT_LM_DECODER,
+            )
+            list_predictions.extend(decoded_batch_strings)
 
         if len(list_predictions) != len(list_ground_truths):
             raise RuntimeError(

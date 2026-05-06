@@ -46,7 +46,6 @@ def execute_morphological_preprocessing_from_array(
     try:
         if raw_img is None or raw_img.size == 0:
             return None
-
         if len(raw_img.shape) == 3:
             raw_gray = cv2.cvtColor(raw_img, cv2.COLOR_BGR2GRAY)
         else:
@@ -65,7 +64,8 @@ def execute_morphological_preprocessing_from_array(
         )
 
         cleaned_binary = cv2.medianBlur(binary_inverse, 3)
-        processed_matrix = cleaned_binary
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        processed_matrix = cv2.morphologyEx(cleaned_binary, cv2.MORPH_CLOSE, kernel)
 
         return _resize_and_pad(processed_matrix, target_w, target_h)
 
@@ -83,6 +83,7 @@ def execute_morphological_preprocessing(
     Backward-compatible file-path wrapper used by training/inference code.
     """
     try:
+        # Image greyscale
         raw_img = cv2.imread(image_filepath, cv2.IMREAD_GRAYSCALE)
         if raw_img is None:
             raise FileNotFoundError(f"Source image missing or corrupted: {image_filepath}")
@@ -106,6 +107,7 @@ def perform_otsu_binarization(page_gray: np.ndarray) -> np.ndarray:
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
     bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel, iterations=1)
     return bw
+
 
 def _extract_runs(active_rows: np.ndarray, min_len: int = 6) -> List[Tuple[int, int]]:
     runs: List[Tuple[int, int]] = []
@@ -276,6 +278,7 @@ def segment_document_into_word_images(image_filepath: str) -> Optional[Dict[str,
         log.error("Document segmentation failed for %s: %s", image_filepath, str(exception_trace))
         return None
 
+
 def segment_words_scale_space(
     line_gray: np.ndarray,
     line_ink: np.ndarray,
@@ -294,7 +297,6 @@ def segment_words_scale_space(
 
     line_h, line_w = line_ink.shape
 
-    # Keep width >> height to merge characters into words
     kw = max(base_kernel[0], int(line_w * 0.06))
     kh = max(base_kernel[1], int(line_h * 0.35))
     if kw % 2 == 0:

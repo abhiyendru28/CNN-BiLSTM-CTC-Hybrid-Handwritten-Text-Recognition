@@ -1,0 +1,53 @@
+{
+  "run_info": {
+    "test_subset_size": 19292,
+    "evaluated_samples": 19292,
+    "dropped_samples": 0,
+    "requested_lm": true,
+    "effective_require_lm": true,
+    "decoder_mode": "lm_ctcdecode",
+    "decoder_fallback_note": null
+  },
+  "summary": {
+    "evaluated_samples": 19292,
+    "accuracy_mode": "case_insensitive",
+    "case_only_matches_treated_correct": 147,
+    "exact_match_accuracy_pct": 87.37300435413643,
+    "sequence_accuracy_pct": 87.37300435413643,
+    "word_accuracy_pct": 87.35102083117421,
+    "character_accuracy_pct": 94.59298502462809,
+    "wer_avg": 0.12639954385237404,
+    "cer_avg": 0.05973721906103216,
+    "wer_global": 0.12648979168825786,
+    "cer_global": 0.05407014975371903,
+    "precision_micro": 0.8737300435413643,
+    "recall_micro": 0.8737300435413643,
+    "f1_micro": 0.8737300435413643,
+    "precision_macro": 0.5770632852662245,
+    "recall_macro": 0.5521725847258071,
+    "f1_macro": 0.5582433776264485,
+    "precision_weighted": 0.9053964093200744,
+    "recall_weighted": 0.8737300435413643,
+    "f1_weighted": 0.8836308630977597
+  },
+  "core_metrics": {
+    "sequence_accuracy": 87.37300435413643,
+    "word_accuracy": 87.35102083117421,
+    "character_accuracy": 94.59298502462809,
+    "wer": 0.12639954385237404,
+    "cer": 0.05973721906103216,
+    "global_wer": 0.12648979168825786,
+    "global_cer": 0.05407014975371903
+  },
+  "classification_metrics": {
+    "precision_micro": 0.8737300435413643,
+    "recall_micro": 0.8737300435413643,
+    "f1_micro": 0.8737300435413643,
+    "precision_macro": 0.5770632852662245,
+    "recall_macro": 0.5521725847258071,
+    "f1_macro": 0.5582433776264485,
+    "precision_weighted": 0.9053964093200744,
+    "recall_weighted": 0.8737300435413643,
+    "f1_weighted": 0.8836308630977597
+  }
+}

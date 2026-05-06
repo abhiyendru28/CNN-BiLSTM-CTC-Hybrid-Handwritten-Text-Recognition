@@ -40,20 +40,6 @@ def encode_ground_truth(text_string: str, strict_charset: bool = STRICT_CHARSET_
     return encoded
 
 
-def compute_ctc_min_timesteps(encoded_sequence: list) -> int:
-    """
-    Minimum required CTC time steps for a label sequence.
-    Adjacent repeated labels need an extra blank-separating step.
-    """
-    if not encoded_sequence:
-        return 0
-
-    repeated_adjacent = sum(
-        1 for previous, current in zip(encoded_sequence, encoded_sequence[1:]) if previous == current
-    )
-    return len(encoded_sequence) + repeated_adjacent
-
-
 def parse_iam_metadata(
     metadata_filepath: str,
     images_directory: str,
@@ -61,7 +47,6 @@ def parse_iam_metadata(
     strict_integrity: bool = True,
 ) -> list:
     verified_dataset = []
-    dropped_ctc_infeasible = 0
     try:
         with open(metadata_filepath, "r", encoding="utf-8") as file_buffer:
             for textual_line in file_buffer:
@@ -96,12 +81,6 @@ def parse_iam_metadata(
                 if len(clean_transcription) < 1 or len(clean_transcription) > SEQUENCE_TIME_STEPS:
                     continue
 
-                encoded_transcription = encode_ground_truth(clean_transcription, strict_charset=True)
-                required_timesteps = compute_ctc_min_timesteps(encoded_transcription)
-                if required_timesteps > SEQUENCE_TIME_STEPS:
-                    dropped_ctc_infeasible += 1
-                    continue
-
                 directory_parts = word_id.split("-")
                 if len(directory_parts) < 2:
                     continue
@@ -122,13 +101,6 @@ def parse_iam_metadata(
                     }
                 )
 
-        if dropped_ctc_infeasible:
-            log.info(
-                "Dropped %d words due to CTC-infeasible targets (required_steps > %d).",
-                dropped_ctc_infeasible,
-                SEQUENCE_TIME_STEPS,
-            )
-
         log.info(f"Word metadata ingestion complete. Total verified samples: {len(verified_dataset)}")
         return verified_dataset
 
@@ -138,34 +110,7 @@ def parse_iam_metadata(
 
 
 class OptimizedHTRGenerator(tf.keras.utils.Sequence):
-    def __init__(
-        self,
-        data_corpus,
-        batch_size=TRAIN_BATCH_SIZE,
-        shuffle_data=True,
-        strict_mode=False,
-        workers: int = 1,
-        use_multiprocessing: bool = False,
-        max_queue_size: int = 10,
-    ):
-        try:
-            super().__init__(
-                workers=workers,
-                use_multiprocessing=use_multiprocessing,
-                max_queue_size=max_queue_size,
-            )
-        except TypeError:
-            # Backward compatibility with older tf.keras Sequence signatures.
-            super().__init__()
-            self.workers = workers
-            self.use_multiprocessing = use_multiprocessing
-            self.max_queue_size = max_queue_size
-
-        # Ensure attrs exist in all runtimes to avoid PyDataset warning paths.
-        self._workers = workers
-        self._use_multiprocessing = use_multiprocessing
-        self._max_queue_size = max_queue_size
-
+    def __init__(self, data_corpus, batch_size=TRAIN_BATCH_SIZE, shuffle_data=True, strict_mode=False):
         self.data_corpus = data_corpus
         self.batch_size = batch_size
         self.shuffle_data = shuffle_data
@@ -205,16 +150,6 @@ class OptimizedHTRGenerator(tf.keras.utils.Sequence):
                     "Label length exceeds sequence steps for %s: %d > %d. Skipping.",
                     element["path"],
                     len(encoded_array),
-                    SEQUENCE_TIME_STEPS,
-                )
-                continue
-
-            required_timesteps = compute_ctc_min_timesteps(encoded_array)
-            if required_timesteps > SEQUENCE_TIME_STEPS:
-                log.warning(
-                    "CTC-infeasible sample for %s: required_steps=%d, available_steps=%d. Skipping.",
-                    element["path"],
-                    required_timesteps,
                     SEQUENCE_TIME_STEPS,
                 )
                 continue
