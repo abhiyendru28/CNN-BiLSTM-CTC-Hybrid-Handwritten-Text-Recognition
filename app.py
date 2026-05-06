@@ -64,7 +64,7 @@ def predict() -> ResponseReturnValue:
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
 
-    # Word-level: direct decode, no segmentation
+    # Word-level
     if output_level == "word":
         processed_tensor = execute_morphological_preprocessing(filepath)
         if processed_tensor is None:
@@ -119,7 +119,7 @@ def predict() -> ResponseReturnValue:
             }
         ), 200
 
-    # Line-level: segmentation path (Otsu)
+    # Line-level
     if output_level == "line":
         line_gray = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
         if line_gray is None:
